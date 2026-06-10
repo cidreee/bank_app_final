@@ -1,9 +1,10 @@
 const { sql, query } = require('../config/database');
 const logger = require('../utils/logger');
-
-const MONTO_MINIMO  = 500.00;
-const LIMITE_DIARIO = 7000.00;
-const SALDO_MAXIMO  = 50000.00;
+const {
+    LIMITE_DIARIO,
+    SALDO_MAXIMO,
+    validarEntradaTransferencia
+} = require('../utils/validators');
 
 // BA-21 [RF-09] Realizar transferencia
 async function realizarTransferencia(req, res) {
@@ -16,25 +17,11 @@ async function realizarTransferencia(req, res) {
             cuenta_destino, monto: montoNum, concepto
         });
 
-        // ── Validaciones de entrada ──────────────────────────────────────────
-        // BA-79
-        if (!cuenta_destino || !monto || !concepto) {
-            logger.warn('Transfer', 'Campos requeridos faltantes', { userId });
-            return res.status(400).json({ error: 'Todos los campos son requeridos' });
-        }
-
-        // BA-88: 16 dígitos
-        if (String(cuenta_destino).length !== 16) {
-            logger.warn('Transfer', 'Cuenta destino inválida (longitud)', { cuenta_destino, userId });
-            return res.status(400).json({ error: 'El número de cuenta debe tener exactamente 16 dígitos' });
-        }
-
-        // BA-82: monto mínimo
-        if (isNaN(montoNum) || montoNum < MONTO_MINIMO) {
-            logger.warn('Transfer', `Monto inválido: ${montoNum}`, { userId });
-            return res.status(400).json({
-                error: `El monto mínimo de transferencia es $${MONTO_MINIMO.toFixed(2)}`
-            });
+        // ── Validaciones de entrada: campos, cuenta de 16 digitos y monto minimo.
+        const erroresEntrada = validarEntradaTransferencia({ cuentaDestino: cuenta_destino, monto, concepto });
+        if (erroresEntrada.length) {
+            logger.warn('Transfer', 'Entrada invalida', { userId, errores: erroresEntrada });
+            return res.status(400).json({ error: erroresEntrada[0] });
         }
 
         // ── Cuenta origen ────────────────────────────────────────────────────

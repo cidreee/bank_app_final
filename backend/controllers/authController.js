@@ -2,18 +2,9 @@ const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
 const { sql, query } = require('../config/database');
 const logger = require('../utils/logger');
+const { validarFormatoPassword } = require('../utils/validators');
 
 const MAX_INTENTOS = 3;
-
-// BA-8 [RF-02] Validación de contraseña (BA-55 / BA-56 / BA-57)
-function validarFormatoPassword(password) {
-    const errores = [];
-    if (password.length < 5 || password.length > 8) errores.push('longitud 5-8 caracteres');
-    if (!/[A-Z]/.test(password))         errores.push('al menos una mayúscula');
-    if (!/[0-9]/.test(password))         errores.push('al menos un número');
-    if (!/[^A-Za-z0-9]/.test(password))  errores.push('al menos un carácter especial');
-    return errores;
-}
 
 // BA-7 [RF-01] Inicio de sesión
 async function login(req, res) {
