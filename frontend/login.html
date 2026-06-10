@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBVA — Banca en Línea</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .login-page { min-height: 100vh; }
+        .password-hint {
+            font-size: .75rem;
+            color: var(--bbva-gray);
+            margin-top: 6px;
+            line-height: 1.5;
+        }
+        #loginAlert { display: none; }
+        .attempts-warning {
+            background: rgba(225,122,0,.1);
+            border: 1px solid rgba(225,122,0,.3);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: .82rem;
+            color: #7a4a00;
+            margin-bottom: 16px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="login-page">
+
+    <!-- Panel izquierdo decorativo -->
+    <div class="login-left">
+        <div class="login-logo">
+            <div class="login-logo-icon">BB</div>
+            <span class="login-logo-text">BBVA</span>
+        </div>
+        <p class="login-tagline">
+            Bienvenido a tu banco digital.<br>
+            Seguro, rápido y siempre disponible para ti.
+        </p>
+    </div>
+
+    <!-- Panel derecho: formulario -->
+    <div class="login-right">
+        <div class="login-card">
+            <h2>Iniciar sesión</h2>
+            <p class="subtitle">Ingresa tus credenciales para continuar</p>
+
+            <div id="loginAlert" class="alert alert-danger">
+                <span>⚠</span>
+                <span id="loginAlertMsg"></span>
+            </div>
+            <div class="attempts-warning" id="attemptsWarning"></div>
+
+            <form id="loginForm" novalidate>
+                <div class="form-group">
+                    <label for="usuario">Usuario</label>
+                    <input
+                        type="text"
+                        id="usuario"
+                        name="usuario"
+                        placeholder="admin · carlos"
+                        autocomplete="username"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <div class="input-wrapper">
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            placeholder="••••••••"
+                            autocomplete="current-password"
+                            required
+                        >
+                        <button type="button" class="toggle-password" id="togglePwd" aria-label="Mostrar contraseña">👁</button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="loginBtn">
+                    Ingresar
+                </button>
+            </form>
+
+            <p class="text-muted text-center mt-4">
+                ¿Problemas para ingresar? <a href="#" style="color:var(--bbva-blue-light)">Contactar soporte</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+</body>
+</html>

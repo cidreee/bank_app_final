@@ -1,0 +1,92 @@
+====================================================
+  BBVA FAKE — Instrucciones de instalación y uso
+====================================================
+
+PRERREQUISITOS
+--------------
+1. Node.js >= 18  (https://nodejs.org)
+2. SQL Server 2019+ (Express edition es gratuita)
+   o SQL Server con nombre de instancia disponible
+
+PASO 1 — Base de datos
+-----------------------
+1. Abre SQL Server Management Studio (SSMS)
+2. Ejecuta el script:  database/BD_BBVA.sql
+   Esto crea la base de datos BD_BBVA con todas las tablas.
+
+PASO 2 — Configurar conexión
+------------------------------
+Edita  backend/.env  y ajusta:
+  DB_SERVER    = nombre de tu instancia SQL Server (ej: localhost\SQLEXPRESS)
+  DB_USER      = tu usuario SQL (ej: sa)
+  DB_PASSWORD  = tu contraseña SQL
+  DB_ENCRYPT   = false  (true si usas Azure)
+
+PASO 3 — Instalar dependencias e insertar datos semilla
+---------------------------------------------------------
+  cd backend
+  npm install
+  npm run seed
+
+El seed inserta los usuarios de prueba con contraseñas encriptadas:
+  admin@bbva.com  / Admin1!   (administrador)
+  carlos@bbva.com / Carlos1!  (cliente - cuenta 1234567890123456)
+  maria@bbva.com  / Maria1!   (cliente - cuenta 9876543210987654)
+
+PASO 4 — Iniciar el servidor
+------------------------------
+  npm start
+  (o "npm run dev" para modo desarrollo con recarga automática)
+
+Abre en el navegador:  http://localhost:3000
+
+====================================================
+  ESTRUCTURA DE ARCHIVOS
+====================================================
+
+BBVA_FAKE/
+├── backend/
+│   ├── config/database.js       ← Conexión SQL Server (pool)
+│   ├── controllers/
+│   │   ├── authController.js    ← Login + validación de intentos
+│   │   ├── accountController.js ← Saldo y movimientos
+│   │   ├── transferController.js← Validaciones y ejecución
+│   │   └── adminController.js   ← Panel administrador
+│   ├── middleware/auth.js        ← JWT + guard de roles
+│   ├── routes/                  ← Rutas REST
+│   ├── server.js                ← Punto de entrada Express
+│   ├── seed.js                  ← Script datos semilla
+│   └── .env                     ← Variables de entorno
+├── frontend/
+│   ├── css/styles.css           ← Estilos BBVA (azul marino)
+│   ├── js/
+│   │   ├── utils.js             ← apiFetch, formatters, toast
+│   │   ├── auth.js              ← Lógica de login
+│   │   └── dashboard.js        ← Dashboard completo
+│   ├── login.html
+│   └── dashboard.html
+└── database/
+    └── BD_BBVA.sql              ← Script DDL completo
+
+====================================================
+  API ENDPOINTS
+====================================================
+
+POST  /api/auth/login
+GET   /api/cuentas/mi-cuenta       (JWT requerido)
+GET   /api/cuentas/movimientos     (JWT requerido, ?page=1)
+POST  /api/transferencias          (JWT requerido)
+GET   /api/admin/cuentas           (JWT admin)
+GET   /api/admin/transferencias    (JWT admin)
+PATCH /api/admin/usuarios/:id/desbloquear  (JWT admin)
+
+====================================================
+  REGLAS DE NEGOCIO
+====================================================
+
+· Monto mínimo por transferencia: $500.00
+· Límite diario de envío:         $7,000.00
+· Saldo máximo por cuenta:        $50,000.00
+· Bloqueo tras 3 intentos fallidos (al 4.° se bloquea)
+· Solo el administrador puede reactivar cuentas bloqueadas
+· Contraseña: 5-8 chars, ≥1 mayúscula, ≥1 número, ≥1 especial

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBVA — Mi Cuenta</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* ----  Dashboard-specific styles ---- */
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .transfer-summary {
+            background: var(--bbva-gray-light);
+            border-radius: 10px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .transfer-summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: .88rem;
+            padding: 4px 0;
+        }
+        .transfer-summary-row.total {
+            border-top: 1px solid #CBD5E0;
+            margin-top: 8px;
+            padding-top: 10px;
+            font-weight: 700;
+            font-size: .95rem;
+            color: var(--bbva-blue);
+        }
+
+        #limiteDiarioBar {
+            height: 8px;
+            background: #E2E8F0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        #limiteDiarioFill {
+            height: 100%;
+            background: var(--bbva-blue-light);
+            border-radius: 4px;
+            transition: width .4s ease;
+        }
+
+        .admin-panel-table th { cursor: default; }
+
+        /* Transfer form validation indicators */
+        .input-ok   { border-color: var(--bbva-success) !important; }
+        .input-fail { border-color: var(--bbva-danger)  !important; }
+    </style>
+</head>
+<body>
+
+<!-- ======= NAVBAR ======= -->
+<nav class="navbar">
+    <a href="#" class="navbar-brand">
+        <div class="navbar-brand-icon">BB</div>
+        <span class="navbar-brand-name">BBVA</span>
+    </a>
+    <div class="navbar-spacer"></div>
+    <div class="navbar-user">
+        <div class="navbar-avatar" id="navAvatar">?</div>
+        <div>
+            <span class="navbar-username" id="navUserName">Cargando...</span>
+            <span class="navbar-role" id="navUserRole"></span>
+        </div>
+    </div>
+    <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+</nav>
+
+<!-- ======= LAYOUT ======= -->
+<div class="app-wrapper">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <p class="sidebar-section-title">Mi cuenta</p>
+        <ul class="sidebar-nav" id="sidebarNav">
+            <li><a href="#" data-section="inicio" class="active"><span class="sidebar-icon">🏠</span> Inicio</a></li>
+            <li><a href="#" data-section="transferir"><span class="sidebar-icon">💸</span> Transferir</a></li>
+            <li><a href="#" data-section="historial"><span class="sidebar-icon">📋</span> Movimientos</a></li>
+            <!-- Solo Admin -->
+            <li class="admin-only hidden"><a href="#" data-section="admin"><span class="sidebar-icon">🛡</span> Administración</a></li>
+        </ul>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+
+        <!-- ===== INICIO ===== -->
+        <div class="section active" id="section-inicio">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title" id="welcomeTitle">Bienvenido</h1>
+                    <p class="page-subtitle" id="todayDate"></p>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btnRefrescar" onclick="refrescarDatos()">
+                    🔄 Refrescar pantalla
+                </button>
+            </div>
+
+            <!-- Balance card -->
+            <div class="balance-card mb-4" id="balanceCard">
+                <p class="balance-card-label">Saldo disponible</p>
+                <p class="balance-card-amount" id="saldoDisplay">$0.00</p>
+                <p class="balance-card-account font-mono" id="numeroCuentaDisplay">#### #### #### ####</p>
+                <div class="balance-card-status">
+                    <span class="status-dot"></span>
+                    <span>Cuenta activa</span>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid-3 mt-4" id="statsGrid">
+                <div class="stat-card">
+                    <p class="stat-card-label">Enviado hoy</p>
+                    <p class="stat-card-value" id="statEnviado">$0.00</p>
+                    <p class="stat-card-sub">Límite diario: $7,000.00</p>
+                </div>
+                <div class="stat-card" style="border-left-color: var(--bbva-success)">
+                    <p class="stat-card-label">Recibido hoy</p>
+                    <p class="stat-card-value" id="statRecibido">$0.00</p>
+                    <p class="stat-card-sub">Último depósito</p>
+                </div>
+                <div class="stat-card" style="border-left-color: var(--bbva-warning)">
+                    <p class="stat-card-label">Disponible para enviar</p>
+                    <p class="stat-card-value" id="statDisponible">$7,000.00</p>
+                    <div id="limiteDiarioBar"><div id="limiteDiarioFill" style="width:0%"></div></div>
+                </div>
+            </div>
+
+            <!-- Ultimos movimientos -->
+            <div class="card mt-6">
+                <div class="card-header">
+                    <span class="card-title">Últimos movimientos</span>
+                    <a href="#" data-section="historial" class="btn btn-secondary btn-sm nav-link">Ver todos</a>
+                </div>
+                <div class="card-body">
+                    <ul class="tx-list" id="recentTxList">
+                        <li class="text-muted text-center" style="padding:20px">Cargando movimientos...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TRANSFERIR ===== -->
+        <div class="section" id="section-transferir">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Nueva transferencia</h1>
+                    <p class="page-subtitle">Envía dinero a otra cuenta BBVA</p>
+                </div>
+            </div>
+
+            <div class="card" style="max-width:580px">
+                <div class="card-header">
+                    <span class="card-title">💸 Datos de la transferencia</span>
+                    <span class="text-muted" style="font-size:.78rem">Solo cuentas BBVA</span>
+                </div>
+                <div class="card-body">
+                    <div id="transferAlert" class="hidden"></div>
+
+                    <form id="transferForm" novalidate>
+                        <div class="form-group">
+                            <label for="tf_cuenta_destino">Cuenta destino (16 dígitos)</label>
+                            <input
+                                type="text"
+                                id="tf_cuenta_destino"
+                                maxlength="16"
+                                placeholder="1234567890123456"
+                                class="font-mono"
+                                autocomplete="off"
+                            >
+                            <span class="field-error" id="err_cuenta">Debe tener exactamente 16 dígitos</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tf_monto">Monto ($)</label>
+                            <input
+                                type="number"
+                                id="tf_monto"
+                                min="500"
+                                max="7000"
+                                step="0.01"
+                                placeholder="500.00"
+                            >
+                            <span class="field-error" id="err_monto">Monto mínimo $500.00</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tf_concepto">Concepto</label>
+                            <input
+                                type="text"
+                                id="tf_concepto"
+                                maxlength="100"
+                                placeholder="Pago de renta, préstamo..."
+                            >
+                            <span class="field-error" id="err_concepto">El concepto es requerido</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tf_tipo">Tipo de transacción</label>
+                            <select id="tf_tipo">
+                                <option value="transferencia">Transferencia</option>
+                                <option value="deposito">Depósito</option>
+                                <option value="retiro">Retiro</option>
+                            </select>
+                        </div>
+
+                        <!-- Resumen -->
+                        <div class="transfer-summary hidden" id="transferSummary">
+                            <div class="transfer-summary-row">
+                                <span>Cuenta destino</span>
+                                <span class="font-mono" id="sumCuenta">—</span>
+                            </div>
+                            <div class="transfer-summary-row">
+                                <span>Concepto</span>
+                                <span id="sumConcepto">—</span>
+                            </div>
+                            <div class="transfer-summary-row">
+                                <span>Tipo</span>
+                                <span id="sumTipo">—</span>
+                            </div>
+                            <div class="transfer-summary-row total">
+                                <span>Monto a transferir</span>
+                                <span id="sumMonto">$0.00</span>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:10px; margin-top:8px">
+                            <button type="button" class="btn btn-secondary" id="btnPreview" onclick="previewTransfer()" style="flex:1">
+                                Vista previa
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="btnTransfer" style="flex:2">
+                                Confirmar transferencia
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== HISTORIAL ===== -->
+        <div class="section" id="section-historial">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Historial de movimientos</h1>
+                    <p class="page-subtitle">Transferencias enviadas y recibidas</p>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="cargarHistorial(1)">🔄 Refrescar</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">📋 Movimientos</span>
+                    <span class="text-muted" id="historialInfo"></span>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Concepto</th>
+                                    <th>Cuenta</th>
+                                    <th>Monto</th>
+                                    <th>Fecha y hora</th>
+                                    <th>Transacción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historialBody">
+                                <tr><td colspan="6" class="text-center text-muted" style="padding:20px">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="historialPaginacion"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== ADMIN ===== -->
+        <div class="section" id="section-admin">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Panel de administración</h1>
+                    <p class="page-subtitle">Gestión de cuentas de usuarios</p>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="cargarAdmin()">🔄 Refrescar</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">🛡 Cuentas registradas</span>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <div class="table-wrapper">
+                        <table class="admin-panel-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Usuario</th>
+                                    <th>Rol</th>
+                                    <th>Estado</th>
+                                    <th>Número de cuenta</th>
+                                    <th>Saldo</th>
+                                    <th>Último acceso</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminBody">
+                                <tr><td colspan="9" class="text-center text-muted" style="padding:20px">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- Modal de éxito -->
+<div class="modal-overlay" id="successModal">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="modal-title">✅ Transferencia exitosa</span>
+        </div>
+        <div class="modal-body" id="successModalBody">
+            <div style="text-align:center; padding: 20px 0">
+                <div style="font-size:3rem; margin-bottom:12px">✅</div>
+                <p style="font-size:1.3rem; font-weight:700; color:var(--bbva-success); margin-bottom:8px" id="successAmount">$0.00</p>
+                <p style="font-size:.88rem; color:var(--bbva-gray)" id="successRef">REF: —</p>
+                <p style="font-size:.82rem; color:var(--bbva-gray); margin-top:4px" id="successFecha">—</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="closeSuccessModal()">Aceptar</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/utils.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>
