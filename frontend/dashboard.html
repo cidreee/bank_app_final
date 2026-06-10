@@ -243,31 +243,34 @@
         </div>
 
         <!-- ===== HISTORIAL ===== -->
+        <!-- BA-123: Sin filtros (SRS prohíbe implementarlos) -->
         <div class="section" id="section-historial">
             <div class="page-header">
                 <div>
                     <h1 class="page-title">Historial de movimientos</h1>
-                    <p class="page-subtitle">Transferencias enviadas y recibidas</p>
+                    <!-- BA-120: más reciente primero · BA-119: 5 por página -->
+                    <p class="page-subtitle">Más reciente primero &nbsp;·&nbsp; 5 registros por página</p>
                 </div>
                 <button class="btn btn-secondary btn-sm" onclick="cargarHistorial(1)">🔄 Refrescar</button>
             </div>
 
             <div class="card">
                 <div class="card-header">
+                    <!-- BA-121 / BA-122: concepto, monto, cuenta, fecha/hora, tipo -->
                     <span class="card-title">📋 Movimientos</span>
-                    <span class="text-muted" id="historialInfo"></span>
+                    <span class="text-muted" id="historialInfo" style="font-size:.8rem"></span>
                 </div>
                 <div class="card-body" style="padding:0">
                     <div class="table-wrapper">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Tipo</th>
+                                    <th>Dirección</th>
                                     <th>Concepto</th>
                                     <th>Cuenta</th>
                                     <th>Monto</th>
                                     <th>Fecha y hora</th>
-                                    <th>Transacción</th>
+                                    <th>Tipo</th>
                                 </tr>
                             </thead>
                             <tbody id="historialBody">
@@ -285,14 +288,18 @@
             <div class="page-header">
                 <div>
                     <h1 class="page-title">Panel de administración</h1>
-                    <p class="page-subtitle">Gestión de cuentas de usuarios</p>
+                    <p class="page-subtitle" id="adminSubtitle">Gestión de cuentas de usuarios</p>
                 </div>
-                <button class="btn btn-secondary btn-sm" onclick="cargarAdmin()">🔄 Refrescar</button>
+                <div style="display:flex;gap:8px">
+                    <button class="btn btn-primary btn-sm" onclick="abrirModalNuevoUsuario()"> Nuevo usuario</button>
+                    <button class="btn btn-secondary btn-sm" onclick="cargarAdmin()"> Refrescar</button>
+                </div>
             </div>
 
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">🛡 Cuentas registradas</span>
+                    <span class="text-muted" id="adminContador" style="font-size:.8rem"></span>
                 </div>
                 <div class="card-body" style="padding:0">
                     <div class="table-wrapper">
@@ -342,8 +349,65 @@
     </div>
 </div>
 
+<!-- Modal: Nuevo usuario (admin) -->
+<div class="modal-overlay" id="newUserModal">
+    <div class="modal" style="max-width:480px;width:100%">
+        <div class="modal-header">
+            <span class="modal-title">➕ Nuevo usuario cliente</span>
+            <button class="btn btn-secondary btn-sm" onclick="cerrarModalNuevoUsuario()" style="padding:4px 10px">✕</button>
+        </div>
+        <div class="modal-body">
+            <!-- Preview cuenta -->
+            <div style="background:var(--bbva-blue);color:#fff;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+                <span style="font-size:1.6rem">💳</span>
+                <div>
+                    <div style="font-size:.68rem;opacity:.75;text-transform:uppercase;letter-spacing:.5px">Número de cuenta asignado</div>
+                    <div class="font-mono" id="nu_previewCuenta" style="font-size:.92rem;letter-spacing:2px;font-weight:600">Generando...</div>
+                    <div style="font-size:.7rem;opacity:.8;margin-top:2px">Saldo inicial: $1,000.00 MXN</div>
+                </div>
+            </div>
+
+            <div id="nuAlert" class="alert alert-danger hidden"><span>⚠</span><span id="nuAlertMsg"></span></div>
+
+            <form id="newUserForm" novalidate>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                    <div class="form-group">
+                        <label for="nu_nombre">Nombre <span style="color:var(--bbva-danger)">*</span></label>
+                        <input type="text" id="nu_nombre" maxlength="50" placeholder="Ana">
+                    </div>
+                    <div class="form-group">
+                        <label for="nu_apellido">Apellido <span style="color:var(--bbva-danger)">*</span></label>
+                        <input type="text" id="nu_apellido" maxlength="50" placeholder="López">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="nu_email">Correo electrónico</label>
+                    <input type="email" id="nu_email" maxlength="100" placeholder="ana@correo.com">
+                </div>
+                <div class="form-group">
+                    <label for="nu_usuario">Usuario <span style="color:var(--bbva-danger)">*</span></label>
+                    <input type="text" id="nu_usuario" maxlength="20" placeholder="analopez">
+                </div>
+                <div class="form-group">
+                    <label for="nu_password">Contraseña <span style="color:var(--bbva-danger)">*</span></label>
+                    <div class="input-wrapper">
+                        <input type="password" id="nu_password" maxlength="8" placeholder="Ej: Ana1!">
+                        <button type="button" class="toggle-password" id="nu_togglePwd">👁</button>
+                    </div>
+                    <small class="text-muted" style="font-size:.73rem">5–8 chars · mayúscula · número · carácter especial</small>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer" style="gap:10px">
+            <button class="btn btn-secondary" onclick="cerrarModalNuevoUsuario()">Cancelar</button>
+            <button class="btn btn-primary" id="nuSubmitBtn" onclick="procesarNuevoUsuario()">Crear usuario</button>
+        </div>
+    </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 
+<script src="js/logger.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/dashboard.js"></script>
 </body>
