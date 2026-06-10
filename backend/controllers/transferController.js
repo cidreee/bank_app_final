@@ -1,80 +1,100 @@
 const { sql, query } = require('../config/database');
+const logger = require('../utils/logger');
 
-const MONTO_MINIMO    = 500.00;
-const LIMITE_DIARIO   = 7000.00;
-const SALDO_MAXIMO    = 50000.00;
+const MONTO_MINIMO  = 500.00;
+const LIMITE_DIARIO = 7000.00;
+const SALDO_MAXIMO  = 50000.00;
 
+// BA-21 [RF-09] Realizar transferencia
 async function realizarTransferencia(req, res) {
+    const userId = req.user.id;
     try {
         const { cuenta_destino, monto, concepto, tipo_transaccion } = req.body;
         const montoNum = parseFloat(monto);
 
-        // Validaciones básicas
+        logger.info('Transfer', `Inicio transferencia: usuario=${userId}`, {
+            cuenta_destino, monto: montoNum, concepto
+        });
+
+        // ── Validaciones de entrada ──────────────────────────────────────────
+        // BA-79
         if (!cuenta_destino || !monto || !concepto) {
+            logger.warn('Transfer', 'Campos requeridos faltantes', { userId });
             return res.status(400).json({ error: 'Todos los campos son requeridos' });
         }
 
+        // BA-88: 16 dígitos
         if (String(cuenta_destino).length !== 16) {
+            logger.warn('Transfer', 'Cuenta destino inválida (longitud)', { cuenta_destino, userId });
             return res.status(400).json({ error: 'El número de cuenta debe tener exactamente 16 dígitos' });
         }
 
+        // BA-82: monto mínimo
         if (isNaN(montoNum) || montoNum < MONTO_MINIMO) {
-            return res.status(400).json({ error: `El monto mínimo de transferencia es $${MONTO_MINIMO.toFixed(2)}` });
+            logger.warn('Transfer', `Monto inválido: ${montoNum}`, { userId });
+            return res.status(400).json({
+                error: `El monto mínimo de transferencia es $${MONTO_MINIMO.toFixed(2)}`
+            });
         }
 
-        // Obtener cuenta origen del usuario autenticado
-        const cuentaOrigenResult = await query(
+        // ── Cuenta origen ────────────────────────────────────────────────────
+        const origenResult = await query(
             'SELECT numero_cuenta, saldo, estado FROM Cuentas WHERE usuario_id = @uid',
-            [{ name: 'uid', type: sql.Int, value: req.user.id }]
+            [{ name: 'uid', type: sql.Int, value: userId }]
         );
+        const cuentaOrigen = origenResult.recordset[0];
 
-        const cuentaOrigen = cuentaOrigenResult.recordset[0];
         if (!cuentaOrigen) {
+            logger.error('Transfer', 'Cuenta origen no encontrada', { userId });
             return res.status(404).json({ error: 'Cuenta origen no encontrada' });
         }
-
         if (cuentaOrigen.estado !== 'activa') {
+            logger.warn('Transfer', 'Cuenta origen inactiva', { userId, estado: cuentaOrigen.estado });
             return res.status(403).json({ error: 'Su cuenta se encuentra inactiva' });
         }
-
         if (cuentaOrigen.numero_cuenta === String(cuenta_destino)) {
             return res.status(400).json({ error: 'No puede transferir a su propia cuenta' });
         }
 
-        // Verificar cuenta destino
-        const cuentaDestinoResult = await query(
+        // BA-89: verificar cuenta destino existe
+        const destinoResult = await query(
             'SELECT numero_cuenta, saldo, estado FROM Cuentas WHERE numero_cuenta = @ndest',
             [{ name: 'ndest', type: sql.Char, value: String(cuenta_destino) }]
         );
+        const cuentaDestino = destinoResult.recordset[0];
 
-        const cuentaDestino = cuentaDestinoResult.recordset[0];
         if (!cuentaDestino) {
+            logger.warn('Transfer', `Cuenta inexistente: ${cuenta_destino}`, { userId });
             return res.status(404).json({ error: 'Cuenta inexistente' });
         }
-
         if (cuentaDestino.estado !== 'activa') {
             return res.status(400).json({ error: 'La cuenta destino no está activa' });
         }
 
-        // Verificar saldo máximo en destino
+        // BA-85 / BA-87: fondos suficientes
+        if (parseFloat(cuentaOrigen.saldo) < montoNum) {
+            logger.warn('Transfer', 'Fondos insuficientes', {
+                userId, saldo: cuentaOrigen.saldo, monto: montoNum
+            });
+            return res.status(400).json({ error: 'Fondos insuficientes' });
+        }
+
+        // BA-92 / BA-93: límite de saldo destino
         if (parseFloat(cuentaDestino.saldo) + montoNum > SALDO_MAXIMO) {
+            logger.warn('Transfer', 'Límite de saldo destino excedido', {
+                saldo_actual: cuentaDestino.saldo, monto: montoNum
+            });
             return res.status(400).json({
                 error: `La cuenta destino alcanzaría el límite máximo de $${SALDO_MAXIMO.toFixed(2)}`
             });
         }
 
-        // Verificar fondos suficientes
-        if (parseFloat(cuentaOrigen.saldo) < montoNum) {
-            return res.status(400).json({ error: 'Fondos insuficientes' });
-        }
-
-        // Verificar límite diario
+        // BA-82: límite diario
         const hoy = new Date().toISOString().split('T')[0];
         const totalDiaResult = await query(`
             SELECT ISNULL(SUM(monto), 0) AS total
             FROM Transferencias
-            WHERE cuenta_origen = @origen
-              AND estado = 'completada'
+            WHERE cuenta_origen = @origen AND estado = 'completada'
               AND CAST(fecha_hora AS DATE) = @hoy
         `, [
             { name: 'origen', type: sql.Char,     value: cuentaOrigen.numero_cuenta },
@@ -84,12 +104,15 @@ async function realizarTransferencia(req, res) {
         const totalDia = parseFloat(totalDiaResult.recordset[0].total);
         if (totalDia + montoNum > LIMITE_DIARIO) {
             const disponible = LIMITE_DIARIO - totalDia;
+            logger.warn('Transfer', 'Límite diario excedido', {
+                totalDia, monto: montoNum, disponible
+            });
             return res.status(400).json({
-                error: `Límite diario excedido. Disponible hoy: $${disponible.toFixed(2)}`
+                error: `Límite diario excedido. Disponible hoy: $${Math.max(0, disponible).toFixed(2)}`
             });
         }
 
-        // Ejecutar transferencia (actualizar saldos + registrar)
+        // ── BA-81: Ejecutar transferencia ────────────────────────────────────
         const tipoTx = tipo_transaccion || 'transferencia';
 
         await query(
@@ -108,6 +131,7 @@ async function realizarTransferencia(req, res) {
             ]
         );
 
+        // BA-98: registrar como completada (permanente)
         const insertResult = await query(`
             INSERT INTO Transferencias (cuenta_origen, cuenta_destino, monto, concepto, tipo_transaccion, estado)
             OUTPUT INSERTED.id, INSERTED.fecha_hora, INSERTED.referencia
@@ -122,6 +146,14 @@ async function realizarTransferencia(req, res) {
 
         const tx = insertResult.recordset[0];
 
+        logger.info('Transfer', `Transferencia exitosa #${tx.id}`, {
+            origen: cuentaOrigen.numero_cuenta,
+            destino: cuenta_destino,
+            monto: montoNum,
+            referencia: tx.referencia
+        });
+
+        // BA-94 / BA-95: mensaje solo cuando exitosa
         res.json({
             mensaje:    'Transferencia exitosa',
             referencia: tx.referencia,
@@ -130,7 +162,7 @@ async function realizarTransferencia(req, res) {
         });
 
     } catch (err) {
-        console.error('realizarTransferencia:', err);
+        logger.error('Transfer', `Error en transferencia: ${err.message}`, { userId, stack: err.stack });
         res.status(500).json({ error: 'Error, consulte al administrador' });
     }
 }

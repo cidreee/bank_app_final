@@ -1,10 +1,11 @@
 const express = require('express');
 const router  = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireCliente } = require('../middleware/auth');
 const { realizarTransferencia } = require('../controllers/transferController');
 
 router.use(authenticateToken);
 
-router.post('/', realizarTransferencia);
+// BA-14 [RNF-02]: solo clientes pueden realizar transferencias
+router.post('/', requireCliente, realizarTransferencia);
 
 module.exports = router;
