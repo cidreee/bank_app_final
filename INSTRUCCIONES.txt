@@ -1,92 +1,90 @@
 ====================================================
-  BBVA FAKE — Instrucciones de instalación y uso
+  BBVA FAKE - Instrucciones de instalacion y uso
 ====================================================
 
 PRERREQUISITOS
 --------------
-1. Node.js >= 18  (https://nodejs.org)
-2. SQL Server 2019+ (Express edition es gratuita)
-   o SQL Server con nombre de instancia disponible
+1. Node.js >= 18
+2. SQL Server 2019+ o SQL Server Express
+3. SQL Server Management Studio (SSMS), Azure Data Studio o herramienta similar
 
-PASO 1 — Base de datos
------------------------
-1. Abre SQL Server Management Studio (SSMS)
-2. Ejecuta el script:  database/BD_BBVA.sql
-   Esto crea la base de datos BD_BBVA con todas las tablas.
+PASO 1 - Base de datos
+----------------------
+1. Abre SQL Server.
+2. Ejecuta el script:
+   database/BD_BBVA.sql
 
-PASO 2 — Configurar conexión
-------------------------------
-Edita  backend/.env  y ajusta:
-  DB_SERVER    = nombre de tu instancia SQL Server (ej: localhost\SQLEXPRESS)
-  DB_USER      = tu usuario SQL (ej: sa)
-  DB_PASSWORD  = tu contraseña SQL
-  DB_ENCRYPT   = false  (true si usas Azure)
+Esto crea BD_BBVA con tablas de usuarios, cuentas y transferencias.
 
-PASO 3 — Instalar dependencias e insertar datos semilla
----------------------------------------------------------
+PASO 2 - Configurar backend/.env
+--------------------------------
+1. Copia backend/.env.example como backend/.env.
+2. Ajusta la conexion:
+
+   PORT=3000
+   DB_SERVER=localhost
+   DB_PORT=1433
+   DB_DATABASE=BD_BBVA
+   DB_USER=sa
+   DB_PASSWORD=TuPasswordSQL123!
+   DB_ENCRYPT=false
+   DB_TRUST_CERT=true
+   JWT_SECRET=bbva_fake_jwt_secret_2024_muy_seguro
+   JWT_EXPIRES_IN=8h
+
+PASO 3 - Instalar dependencias y cargar datos
+---------------------------------------------
   cd backend
   npm install
   npm run seed
 
-El seed inserta los usuarios de prueba con contraseñas encriptadas:
-  admin@bbva.com  / Admin1!   (administrador)
-  carlos@bbva.com / Carlos1!  (cliente - cuenta 1234567890123456)
-  maria@bbva.com  / Maria1!   (cliente - cuenta 9876543210987654)
+Usuarios de prueba:
+  admin@bbva.com   / Admin1!   (administrador)
+  carlos@bbva.com  / Carlos1!  (cliente)
+  maria@bbva.com   / Maria1!   (cliente)
+  juan@bbva.com    / Juan1!    (cliente con saldo insuficiente)
+  luisa@bbva.com   / Luisa1!   (cliente cerca del limite)
+  pedro@bbva.com   / Pedro1!   (bloqueado)
+  ana@bbva.com     / Ana1!     (cliente)
 
-PASO 4 — Iniciar el servidor
-------------------------------
+PASO 4 - Iniciar servidor
+-------------------------
   npm start
-  (o "npm run dev" para modo desarrollo con recarga automática)
 
-Abre en el navegador:  http://localhost:3000
+Abre en el navegador:
+  http://localhost:3000
 
-====================================================
-  ESTRUCTURA DE ARCHIVOS
-====================================================
+IMPORTANTE
+----------
+El frontend ya no usa localStorage como base de datos bancaria.
+Ahora llama al backend con fetch y JWT:
 
-BBVA_FAKE/
-├── backend/
-│   ├── config/database.js       ← Conexión SQL Server (pool)
-│   ├── controllers/
-│   │   ├── authController.js    ← Login + validación de intentos
-│   │   ├── accountController.js ← Saldo y movimientos
-│   │   ├── transferController.js← Validaciones y ejecución
-│   │   └── adminController.js   ← Panel administrador
-│   ├── middleware/auth.js        ← JWT + guard de roles
-│   ├── routes/                  ← Rutas REST
-│   ├── server.js                ← Punto de entrada Express
-│   ├── seed.js                  ← Script datos semilla
-│   └── .env                     ← Variables de entorno
-├── frontend/
-│   ├── css/styles.css           ← Estilos BBVA (azul marino)
-│   ├── js/
-│   │   ├── utils.js             ← apiFetch, formatters, toast
-│   │   ├── auth.js              ← Lógica de login
-│   │   └── dashboard.js        ← Dashboard completo
-│   ├── login.html
-│   └── dashboard.html
-└── database/
-    └── BD_BBVA.sql              ← Script DDL completo
+  POST  /api/auth/login
+  POST  /api/auth/register
+  GET   /api/cuentas/resumen
+  GET   /api/cuentas/mi-cuenta
+  GET   /api/cuentas/movimientos?page=1
+  POST  /api/transferencias
+  GET   /api/admin/cuentas
+  GET   /api/admin/transferencias
+  POST  /api/admin/usuarios
+  PATCH /api/admin/usuarios/:id/desbloquear
 
-====================================================
-  API ENDPOINTS
-====================================================
+El navegador solo guarda el token y el usuario de sesion en sessionStorage.
+Los usuarios, cuentas, saldos, bloqueos y transferencias se guardan en SQL Server.
 
-POST  /api/auth/login
-GET   /api/cuentas/mi-cuenta       (JWT requerido)
-GET   /api/cuentas/movimientos     (JWT requerido, ?page=1)
-POST  /api/transferencias          (JWT requerido)
-GET   /api/admin/cuentas           (JWT admin)
-GET   /api/admin/transferencias    (JWT admin)
-PATCH /api/admin/usuarios/:id/desbloquear  (JWT admin)
+PRUEBAS UNITARIAS
+-----------------
+  cd backend
+  npm test
 
-====================================================
-  REGLAS DE NEGOCIO
-====================================================
-
-· Monto mínimo por transferencia: $500.00
-· Límite diario de envío:         $7,000.00
-· Saldo máximo por cuenta:        $50,000.00
-· Bloqueo tras 3 intentos fallidos (al 4.° se bloquea)
-· Solo el administrador puede reactivar cuentas bloqueadas
-· Contraseña: 5-8 chars, ≥1 mayúscula, ≥1 número, ≥1 especial
+REGLAS DE NEGOCIO
+-----------------
+- Monto minimo por transferencia: $500.00
+- Limite diario de envio: $7,000.00
+- Saldo maximo por cuenta: $50,000.00
+- Bloqueo tras superar 3 intentos fallidos
+- Solo el administrador puede reactivar cuentas bloqueadas
+- Contrasena: 5-8 caracteres, mayuscula, numero y caracter especial
+- Transferencias permanentes, sin cancelacion
+- Historial de 5 movimientos por pagina, sin filtros

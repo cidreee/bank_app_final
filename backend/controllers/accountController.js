@@ -19,6 +19,58 @@ async function getMiCuenta(req, res) {
     }
 }
 
+async function getResumen(req, res) {
+    try {
+        const cuentaResult = await query(
+            'SELECT numero_cuenta, saldo, estado, fecha_apertura FROM Cuentas WHERE usuario_id = @uid',
+            [{ name: 'uid', type: sql.Int, value: req.user.id }]
+        );
+
+        const cuenta = cuentaResult.recordset[0];
+        if (!cuenta) {
+            logger.warn('Account', `Resumen sin cuenta para usuario ${req.user.id}`);
+            return res.status(404).json({ error: 'Cuenta no encontrada' });
+        }
+
+        const hoy = new Date().toISOString().split('T')[0];
+        const enviadoResult = await query(`
+            SELECT ISNULL(SUM(monto), 0) AS total
+            FROM Transferencias
+            WHERE cuenta_origen = @cuenta AND estado = 'completada'
+              AND CAST(fecha_hora AS DATE) = @hoy
+        `, [
+            { name: 'cuenta', type: sql.Char, value: cuenta.numero_cuenta },
+            { name: 'hoy',    type: sql.NVarChar, value: hoy }
+        ]);
+
+        const recibidoResult = await query(`
+            SELECT ISNULL(SUM(monto), 0) AS total
+            FROM Transferencias
+            WHERE cuenta_destino = @cuenta AND estado = 'completada'
+              AND CAST(fecha_hora AS DATE) = @hoy
+        `, [
+            { name: 'cuenta', type: sql.Char, value: cuenta.numero_cuenta },
+            { name: 'hoy',    type: sql.NVarChar, value: hoy }
+        ]);
+
+        const enviadoHoy = parseFloat(enviadoResult.recordset[0].total || 0);
+        const recibidoHoy = parseFloat(recibidoResult.recordset[0].total || 0);
+
+        res.json({
+            cuenta,
+            resumen: {
+                enviado_hoy: enviadoHoy,
+                recibido_hoy: recibidoHoy,
+                limite_diario: 7000,
+                disponible_hoy: Math.max(0, 7000 - enviadoHoy)
+            }
+        });
+    } catch (err) {
+        logger.error('Account', `getResumen error: ${err.message}`, { userId: req.user.id });
+        res.status(500).json({ error: 'Error, consulte al administrador' });
+    }
+}
+
 async function getMovimientos(req, res) {
     try {
         const page   = parseInt(req.query.page) || 1;
@@ -84,4 +136,4 @@ async function getMovimientos(req, res) {
     }
 }
 
-module.exports = { getMiCuenta, getMovimientos };
+module.exports = { getMiCuenta, getResumen, getMovimientos };

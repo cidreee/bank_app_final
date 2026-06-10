@@ -127,16 +127,9 @@
 
                 <!-- Correo -->
                 <div class="form-group">
-                    <label for="reg_email">Correo electrónico</label>
-                    <input type="email" id="reg_email" maxlength="100" placeholder="correo@ejemplo.com" autocomplete="email">
+                    <label for="reg_email">Correo electrónico <span style="color:var(--bbva-danger)">*</span></label>
+                    <input type="email" id="reg_email" maxlength="100" placeholder="correo@ejemplo.com" autocomplete="email" required>
                     <span class="field-error" id="err_email">Formato de correo inválido</span>
-                </div>
-
-                <!-- Usuario -->
-                <div class="form-group">
-                    <label for="reg_usuario">Nombre de usuario <span style="color:var(--bbva-danger)">*</span></label>
-                    <input type="text" id="reg_usuario" maxlength="20" placeholder="carlosmendoza" autocomplete="username" required>
-                    <span class="field-error" id="err_usuario">Solo letras, números y guión bajo (mín. 3 caracteres)</span>
                 </div>
 
                 <!-- Contraseña -->
