@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBVA — Crear cuenta</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .reg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        .account-preview {
+            background: linear-gradient(135deg, var(--bbva-blue-dark) 0%, var(--bbva-blue) 60%, var(--bbva-blue-light) 100%);
+            color: #fff;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 4px 0 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .account-preview-icon { font-size: 1.8rem; opacity: .85; }
+        .account-preview-info .label {
+            font-size: .7rem;
+            opacity: .75;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-bottom: 2px;
+        }
+        .account-preview-info .numero {
+            font-family: 'Courier New', monospace;
+            font-size: .95rem;
+            letter-spacing: 3px;
+            font-weight: 600;
+        }
+        .account-preview-info .saldo-label {
+            font-size: .72rem;
+            opacity: .8;
+            margin-top: 4px;
+        }
+
+        .pwd-rules {
+            list-style: none;
+            margin: 6px 0 0;
+            padding: 0;
+            font-size: .76rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 8px;
+        }
+        .pwd-rules li { color: var(--bbva-gray); transition: color .15s; }
+        .pwd-rules li::before { content: '○ '; }
+        .pwd-rules li.ok  { color: var(--bbva-success); }
+        .pwd-rules li.ok::before  { content: '✓ '; }
+        .pwd-rules li.bad { color: var(--bbva-danger); }
+        .pwd-rules li.bad::before { content: '✗ '; }
+
+        #registerAlert { display: none; }
+
+        @media (max-width: 540px) {
+            .reg-grid { grid-template-columns: 1fr; }
+            .pwd-rules { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="login-page">
+
+    <!-- Panel izquierdo -->
+    <div class="login-left">
+        <div class="login-logo">
+            <div class="login-logo-icon">BB</div>
+            <span class="login-logo-text">BBVA</span>
+        </div>
+        <p class="login-tagline">
+            Abre tu cuenta en minutos.<br>
+            Sin comisiones. Sin complicaciones.<br>
+            Tu número de cuenta se asigna automáticamente.
+        </p>
+    </div>
+
+    <!-- Panel derecho -->
+    <div class="login-right">
+        <div class="login-card" style="max-width:440px; width:100%">
+            <h2>Crear cuenta nueva</h2>
+            <p class="subtitle">Completa el formulario para registrarte</p>
+
+            <div id="registerAlert" class="alert alert-danger" style="margin-bottom:14px">
+                <span>⚠</span><span id="registerAlertMsg"></span>
+            </div>
+
+            <!-- Pantalla de éxito — oculta hasta que el registro sea exitoso -->
+            <div id="successScreen" style="display:none; text-align:center; padding: 10px 0 20px">
+                <div style="font-size:3rem; margin-bottom:12px">✅</div>
+                <h3 style="color:var(--bbva-success); margin-bottom:6px">¡Cuenta creada!</h3>
+                <p id="successNombre" style="font-size:.95rem; margin-bottom:18px; color:var(--bbva-gray-dark)"></p>
+                <div class="account-preview" style="text-align:left">
+                    <div class="account-preview-icon">💳</div>
+                    <div class="account-preview-info">
+                        <div class="label">Tu número de cuenta</div>
+                        <div class="numero font-mono" id="successNumeroCuenta">— — — —</div>
+                        <div class="saldo-label">Saldo inicial: $1,000.00 MXN</div>
+                    </div>
+                </div>
+                <p style="font-size:.78rem; color:var(--bbva-gray); margin:12px 0 16px">
+                    Guarda este número — lo necesitarás para recibir transferencias.
+                </p>
+                <a href="login.html" id="btnIrLogin" class="btn btn-primary" style="display:inline-block; text-decoration:none">
+                    Ir a iniciar sesión
+                </a>
+            </div>
+
+            <form id="registerForm" novalidate>
+
+                <!-- Nombre y apellido -->
+                <div class="reg-grid">
+                    <div class="form-group">
+                        <label for="reg_nombre">Nombre <span style="color:var(--bbva-danger)">*</span></label>
+                        <input type="text" id="reg_nombre" maxlength="50" placeholder="Carlos" autocomplete="given-name" required>
+                        <span class="field-error" id="err_nombre">Requerido</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg_apellido">Apellido <span style="color:var(--bbva-danger)">*</span></label>
+                        <input type="text" id="reg_apellido" maxlength="50" placeholder="Mendoza" autocomplete="family-name" required>
+                        <span class="field-error" id="err_apellido">Requerido</span>
+                    </div>
+                </div>
+
+                <!-- Correo -->
+                <div class="form-group">
+                    <label for="reg_email">Correo electrónico</label>
+                    <input type="email" id="reg_email" maxlength="100" placeholder="correo@ejemplo.com" autocomplete="email">
+                    <span class="field-error" id="err_email">Formato de correo inválido</span>
+                </div>
+
+                <!-- Usuario -->
+                <div class="form-group">
+                    <label for="reg_usuario">Nombre de usuario <span style="color:var(--bbva-danger)">*</span></label>
+                    <input type="text" id="reg_usuario" maxlength="20" placeholder="carlosmendoza" autocomplete="username" required>
+                    <span class="field-error" id="err_usuario">Solo letras, números y guión bajo (mín. 3 caracteres)</span>
+                </div>
+
+                <!-- Contraseña -->
+                <div class="form-group">
+                    <label for="reg_password">Contraseña <span style="color:var(--bbva-danger)">*</span></label>
+                    <div class="input-wrapper">
+                        <input type="password" id="reg_password" maxlength="8" placeholder="••••••••" autocomplete="new-password" required>
+                        <button type="button" class="toggle-password" id="togglePwd" aria-label="Mostrar contraseña">👁</button>
+                    </div>
+                    <ul class="pwd-rules" id="pwdRules">
+                        <li id="rule-len">Entre 5 y 8 caracteres</li>
+                        <li id="rule-upper">Al menos una mayúscula</li>
+                        <li id="rule-num">Al menos un número</li>
+                        <li id="rule-special">Al menos un carácter especial</li>
+                    </ul>
+                </div>
+
+                <!-- Confirmar contraseña -->
+                <div class="form-group">
+                    <label for="reg_confirm">Confirmar contraseña <span style="color:var(--bbva-danger)">*</span></label>
+                    <input type="password" id="reg_confirm" maxlength="8" placeholder="••••••••" autocomplete="new-password" required>
+                    <span class="field-error" id="err_confirm">Las contraseñas no coinciden</span>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="registerBtn" style="width:100%; margin-top:6px">
+                    Crear mi cuenta
+                </button>
+            </form>
+
+            <p class="text-muted text-center mt-4" style="font-size:.85rem">
+                ¿Ya tienes cuenta? <a href="login.html" style="color:var(--bbva-blue-light)">Inicia sesión aquí</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/logger.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/register.js"></script>
+</body>
+</html>
