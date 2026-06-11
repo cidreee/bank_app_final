@@ -19,18 +19,26 @@ Esto crea BD_BBVA con tablas de usuarios, cuentas y transferencias.
 PASO 2 - Configurar backend/.env
 --------------------------------
 1. Copia backend/.env.example como backend/.env.
-2. Ajusta la conexion:
+2. Ajusta la conexion. Para usar tu sesion de Windows en SQL Server:
 
    PORT=3000
-   DB_SERVER=localhost
-   DB_PORT=1433
+   DB_SERVER=LAPTOPVALE
    DB_DATABASE=BD_BBVA
-   DB_USER=sa
-   DB_PASSWORD=TuPasswordSQL123!
+   DB_AUTH_TYPE=windows
+   DB_ODBC_DRIVER=ODBC Driver 18 for SQL Server
    DB_ENCRYPT=false
    DB_TRUST_CERT=true
    JWT_SECRET=bbva_fake_jwt_secret_2024_muy_seguro
    JWT_EXPIRES_IN=8h
+
+   Si tu SQL Server es una instancia nombrada, usa algo como:
+   DB_SERVER=LAPTOPVALE\SQLEXPRESS
+
+   Si prefieres usuario y contrasena de SQL Server, cambia a:
+   DB_AUTH_TYPE=sql
+   DB_PORT=1433
+   DB_USER=sa
+   DB_PASSWORD=TuPasswordSQL123!
 
 PASO 3 - Instalar dependencias y cargar datos
 ---------------------------------------------
