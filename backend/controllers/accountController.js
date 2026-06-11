@@ -39,7 +39,7 @@ async function getResumen(req, res) {
             WHERE cuenta_origen = @cuenta AND estado = 'completada'
               AND CAST(fecha_hora AS DATE) = @hoy
         `, [
-            { name: 'cuenta', type: sql.Char, value: cuenta.numero_cuenta },
+            { name: 'cuenta', type: sql.Char(16), value: cuenta.numero_cuenta },
             { name: 'hoy',    type: sql.NVarChar, value: hoy }
         ]);
 
@@ -49,7 +49,7 @@ async function getResumen(req, res) {
             WHERE cuenta_destino = @cuenta AND estado = 'completada'
               AND CAST(fecha_hora AS DATE) = @hoy
         `, [
-            { name: 'cuenta', type: sql.Char, value: cuenta.numero_cuenta },
+            { name: 'cuenta', type: sql.Char(16), value: cuenta.numero_cuenta },
             { name: 'hoy',    type: sql.NVarChar, value: hoy }
         ]);
 
@@ -106,7 +106,7 @@ async function getMovimientos(req, res) {
             ORDER BY t.fecha_hora DESC
             OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
         `, [
-            { name: 'cuenta', type: sql.Char, value: numeroCuenta },
+            { name: 'cuenta', type: sql.Char(16), value: numeroCuenta },
             { name: 'offset', type: sql.Int,  value: offset },
             { name: 'limit',  type: sql.Int,  value: limit }
         ]);
@@ -115,7 +115,7 @@ async function getMovimientos(req, res) {
             SELECT COUNT(*) AS total
             FROM Transferencias
             WHERE (cuenta_origen = @cuenta OR cuenta_destino = @cuenta) AND estado = 'completada'
-        `, [{ name: 'cuenta', type: sql.Char, value: numeroCuenta }]);
+        `, [{ name: 'cuenta', type: sql.Char(16), value: numeroCuenta }]);
 
         const total = totalResult.recordset[0].total;
 

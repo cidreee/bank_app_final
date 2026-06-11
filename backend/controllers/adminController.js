@@ -148,7 +148,7 @@ async function crearCliente(req, res) {
         while (!creada) {
             const collision = await query(
                 'SELECT numero_cuenta FROM Cuentas WHERE numero_cuenta = @numero',
-                [{ name: 'numero', type: sql.Char, value: numeroCuenta }]
+                [{ name: 'numero', type: sql.Char(16), value: numeroCuenta }]
             );
             if (collision.recordset[0]) {
                 numeroCuenta = generarNumeroCuenta();
@@ -162,7 +162,7 @@ async function crearCliente(req, res) {
             OUTPUT INSERTED.numero_cuenta, INSERTED.saldo, INSERTED.estado, INSERTED.fecha_apertura
             VALUES (@numero, @uid, 1000.00, 'activa')
         `, [
-            { name: 'numero', type: sql.Char, value: numeroCuenta },
+            { name: 'numero', type: sql.Char(16), value: numeroCuenta },
             { name: 'uid',    type: sql.Int,  value: user.id }
         ]);
 

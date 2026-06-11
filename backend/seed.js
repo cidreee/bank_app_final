@@ -81,7 +81,7 @@ async function seed() {
         // de corridas previas o datos creados manualmente durante pruebas.
         const seedParams = numerosCuentaSeed.map((numero, i) => ({
             name:`seed${i}`,
-            type:sql.Char,
+            type:sql.Char(16),
             value:numero
         }));
         const seedPlaceholders = numerosCuentaSeed.map((_, i) => `@seed${i}`).join(', ');
@@ -117,7 +117,7 @@ async function seed() {
                 INSERT INTO Cuentas (numero_cuenta, usuario_id, saldo, estado)
                 VALUES (@num, @uid, @saldo, 'activa')
             `, [
-                { name:'num',   type:sql.Char,    value:c.numero },
+                { name:'num',   type:sql.Char(16), value:c.numero },
                 { name:'uid',   type:sql.Int,     value:userId },
                 { name:'saldo', type:sql.Decimal, value:c.saldo }
             ]);
@@ -148,8 +148,8 @@ async function seed() {
                 INSERT INTO Transferencias (cuenta_origen, cuenta_destino, monto, concepto, tipo_transaccion, fecha_hora, estado, referencia)
                 VALUES (@origen, @destino, @monto, @concepto, @tipo, DATEADD(day, -@dias, GETDATE()), 'completada', @ref)
             `, [
-                { name:'origen',   type:sql.Char,    value:t.origen },
-                { name:'destino',  type:sql.Char,    value:t.destino },
+                { name:'origen',   type:sql.Char(16), value:t.origen },
+                { name:'destino',  type:sql.Char(16), value:t.destino },
                 { name:'monto',    type:sql.Decimal, value:t.monto },
                 { name:'concepto', type:sql.NVarChar,value:t.concepto },
                 { name:'tipo',     type:sql.NVarChar,value:t.tipo },

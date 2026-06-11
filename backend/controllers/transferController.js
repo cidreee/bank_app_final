@@ -46,7 +46,7 @@ async function realizarTransferencia(req, res) {
         // BA-89: verificar cuenta destino existe
         const destinoResult = await query(
             'SELECT numero_cuenta, saldo, estado FROM Cuentas WHERE numero_cuenta = @ndest',
-            [{ name: 'ndest', type: sql.Char, value: String(cuenta_destino) }]
+            [{ name: 'ndest', type: sql.Char(16), value: String(cuenta_destino) }]
         );
         const cuentaDestino = destinoResult.recordset[0];
 
@@ -84,7 +84,7 @@ async function realizarTransferencia(req, res) {
             WHERE cuenta_origen = @origen AND estado = 'completada'
               AND CAST(fecha_hora AS DATE) = @hoy
         `, [
-            { name: 'origen', type: sql.Char,     value: cuentaOrigen.numero_cuenta },
+            { name: 'origen', type: sql.Char(16), value: cuentaOrigen.numero_cuenta },
             { name: 'hoy',    type: sql.NVarChar,  value: hoy }
         ]);
 
@@ -106,7 +106,7 @@ async function realizarTransferencia(req, res) {
             'UPDATE Cuentas SET saldo = saldo - @monto WHERE numero_cuenta = @origen',
             [
                 { name: 'monto',  type: sql.Decimal, value: montoNum },
-                { name: 'origen', type: sql.Char,    value: cuentaOrigen.numero_cuenta }
+                { name: 'origen', type: sql.Char(16), value: cuentaOrigen.numero_cuenta }
             ]
         );
 
@@ -114,7 +114,7 @@ async function realizarTransferencia(req, res) {
             'UPDATE Cuentas SET saldo = saldo + @monto WHERE numero_cuenta = @destino',
             [
                 { name: 'monto',   type: sql.Decimal, value: montoNum },
-                { name: 'destino', type: sql.Char,    value: String(cuenta_destino) }
+                { name: 'destino', type: sql.Char(16), value: String(cuenta_destino) }
             ]
         );
 
@@ -124,8 +124,8 @@ async function realizarTransferencia(req, res) {
             OUTPUT INSERTED.id, INSERTED.fecha_hora, INSERTED.referencia
             VALUES (@origen, @destino, @monto, @concepto, @tipo, 'completada')
         `, [
-            { name: 'origen',   type: sql.Char,     value: cuentaOrigen.numero_cuenta },
-            { name: 'destino',  type: sql.Char,     value: String(cuenta_destino) },
+            { name: 'origen',   type: sql.Char(16), value: cuentaOrigen.numero_cuenta },
+            { name: 'destino',  type: sql.Char(16), value: String(cuenta_destino) },
             { name: 'monto',    type: sql.Decimal,  value: montoNum },
             { name: 'concepto', type: sql.NVarChar, value: concepto },
             { name: 'tipo',     type: sql.NVarChar, value: tipoTx }
