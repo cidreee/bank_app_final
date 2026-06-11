@@ -324,6 +324,34 @@
                     </div>
                 </div>
             </div>
+
+            <div class="card mt-6">
+                <div class="card-header">
+                    <span class="card-title">Movimientos globales</span>
+                    <span class="text-muted" id="adminMovimientosInfo" style="font-size:.8rem"></span>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <div class="table-wrapper">
+                        <table class="admin-panel-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha y hora</th>
+                                    <th>Origen</th>
+                                    <th>Destino</th>
+                                    <th>Concepto</th>
+                                    <th>Tipo</th>
+                                    <th>Monto</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminMovimientosBody">
+                                <tr><td colspan="7" class="text-center text-muted" style="padding:20px">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="adminMovimientosPaginacion"></div>
+                </div>
+            </div>
         </div>
 
     </main>

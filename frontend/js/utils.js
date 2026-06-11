@@ -118,6 +118,10 @@ const API = {
         return apiFetch('/admin/cuentas');
     },
 
+    adminTransferencias(page = 1) {
+        return apiFetch(`/admin/transferencias?page=${encodeURIComponent(page)}`);
+    },
+
     desbloquearUsuario(id) {
         return apiFetch(`/admin/usuarios/${encodeURIComponent(id)}/desbloquear`, {
             method: 'PATCH'

@@ -4,6 +4,7 @@
 
 const LIMITE_DIA = 7000;
 let historialPage = 1;
+let adminMovimientosPage = 1;
 let currentCuenta = null;
 
 if (!requireAuth()) {
@@ -304,6 +305,8 @@ async function cargarAdmin() {
 
     const tbody = document.getElementById('adminBody');
     tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:20px">Cargando...</td></tr>';
+    document.getElementById('adminMovimientosBody').innerHTML =
+        '<tr><td colspan="7" class="text-center text-muted" style="padding:20px">Cargando...</td></tr>';
 
     try {
         const users = await API.adminCuentas();
@@ -316,6 +319,7 @@ async function cargarAdmin() {
 
         if (!users.length) {
             tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:20px">Sin datos</td></tr>';
+            await cargarAdminMovimientos(1);
             return;
         }
 
@@ -337,9 +341,59 @@ async function cargarAdmin() {
                     : '<span class="text-muted" style="font-size:.78rem">-</span>'}
             </td>
         </tr>`).join('');
+
+        await cargarAdminMovimientos(1);
     } catch (err) {
         Logger.error('Admin', `Error cargarAdmin: ${err.message}`);
         tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted" style="padding:20px">${escHtml(err.message)}</td></tr>`;
+    }
+}
+
+async function cargarAdminMovimientos(page) {
+    adminMovimientosPage = page;
+    const tbody = document.getElementById('adminMovimientosBody');
+    const info = document.getElementById('adminMovimientosInfo');
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:20px">Cargando...</td></tr>';
+
+    try {
+        const data = await API.adminTransferencias(page);
+        const txs = data.transferencias || [];
+        const pag = data.paginacion || { total_registros: txs.length, total_paginas: 1 };
+
+        info.textContent = `${pag.total_registros} movimiento(s) - Pagina ${page} de ${pag.total_paginas || 1}`;
+
+        if (!txs.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:20px">Sin movimientos</td></tr>';
+            document.getElementById('adminMovimientosPaginacion').innerHTML = '';
+            return;
+        }
+
+        tbody.innerHTML = txs.map(tx => {
+            const origenNombre = tx.origen_nombre || 'Sin usuario';
+            const destinoNombre = tx.destino_nombre || 'Sin usuario';
+            return `<tr>
+                <td style="font-size:.82rem; white-space:nowrap">${formatDateTime(tx.fecha_hora)}</td>
+                <td>
+                    <span style="font-weight:700">${escHtml(origenNombre)}</span>
+                    <small class="text-muted font-mono" style="display:block;font-size:.72rem">${formatCuentaMask(tx.cuenta_origen)}</small>
+                </td>
+                <td>
+                    <span style="font-weight:700">${escHtml(destinoNombre)}</span>
+                    <small class="text-muted font-mono" style="display:block;font-size:.72rem">${formatCuentaMask(tx.cuenta_destino)}</small>
+                </td>
+                <td>${escHtml(tx.concepto)}</td>
+                <td><span class="badge badge-info">${escHtml(tx.tipo_transaccion)}</span></td>
+                <td class="tx-amount sent" style="white-space:nowrap">${formatCurrency(tx.monto)}</td>
+                <td><span class="badge ${tx.estado === 'completada' ? 'badge-success' : 'badge-warning'}">${escHtml(tx.estado)}</span></td>
+            </tr>`;
+        }).join('');
+
+        renderPaginacion(page, pag.total_paginas || 1, 'adminMovimientosPaginacion', 'cargarAdminMovimientos');
+        Logger.debug('Admin', `Movimientos globales cargados: pagina ${page}`);
+    } catch (err) {
+        Logger.error('Admin', `Error cargarAdminMovimientos: ${err.message}`);
+        info.textContent = '';
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding:20px">${escHtml(err.message)}</td></tr>`;
     }
 }
 
