@@ -77,7 +77,34 @@ async function seed() {
             logger.info('Seed', `✓ Usuario: ${u.email} | pwd: ${u.password} | estado: ${u.estado}`);
         }
 
-        // Insertar / actualizar cuentas usando numero_cuenta como llave real.
+        // Reiniciar datos financieros de usuarios semilla para evitar residuos
+        // de corridas previas o datos creados manualmente durante pruebas.
+        const seedParams = numerosCuentaSeed.map((numero, i) => ({
+            name:`seed${i}`,
+            type:sql.Char,
+            value:numero
+        }));
+        const seedPlaceholders = numerosCuentaSeed.map((_, i) => `@seed${i}`).join(', ');
+
+        await query(`
+            DELETE FROM Transferencias
+            WHERE referencia LIKE 'REF202400%'
+               OR cuenta_origen IN (${seedPlaceholders})
+               OR cuenta_destino IN (${seedPlaceholders})
+        `, seedParams);
+
+        await query(`
+            DELETE c
+            FROM Cuentas c
+            INNER JOIN Usuarios u ON u.id = c.usuario_id
+            WHERE u.email IN (${cuentas.map((_, i) => `@email${i}`).join(', ')})
+               OR c.numero_cuenta IN (${seedPlaceholders})
+        `, [
+            ...cuentas.map((c, i) => ({ name:`email${i}`, type:sql.NVarChar, value:c.email })),
+            ...seedParams
+        ]);
+
+        // Insertar cuentas limpias usando numero_cuenta como llave real.
         for (const c of cuentas) {
             const uidRes = await query(
                 'SELECT id FROM Usuarios WHERE email = @email',
@@ -87,26 +114,8 @@ async function seed() {
             if (!userId) { logger.warn('Seed', `Usuario no encontrado: ${c.email}`); continue; }
 
             await query(`
-                DELETE FROM Cuentas
-                WHERE usuario_id = @uid
-                  AND numero_cuenta NOT IN (${numerosCuentaSeed.map((_, i) => `@seed${i}`).join(', ')})
-            `, [
-                { name:'uid', type:sql.Int, value:userId },
-                ...numerosCuentaSeed.map((numero, i) => ({ name:`seed${i}`, type:sql.Char, value:numero }))
-            ]);
-
-            await query(`
-                IF NOT EXISTS (SELECT 1 FROM Cuentas WHERE numero_cuenta = @num)
-                BEGIN
-                    INSERT INTO Cuentas (numero_cuenta, usuario_id, saldo)
-                    VALUES (@num, @uid, @saldo)
-                END
-                ELSE
-                BEGIN
-                    UPDATE Cuentas
-                    SET usuario_id = @uid, saldo = @saldo, estado = 'activa'
-                    WHERE numero_cuenta = @num
-                END
+                INSERT INTO Cuentas (numero_cuenta, usuario_id, saldo, estado)
+                VALUES (@num, @uid, @saldo, 'activa')
             `, [
                 { name:'num',   type:sql.Char,    value:c.numero },
                 { name:'uid',   type:sql.Int,     value:userId },
@@ -117,9 +126,6 @@ async function seed() {
 
         // ── Transferencias de prueba (BA-35 / BA-119 / BA-120 / BA-124 / BA-126) ──
         logger.info('Seed', 'Insertando transferencias de prueba...');
-
-        // Limpiar transferencias previas de seed para evitar duplicados
-        await query("DELETE FROM Transferencias WHERE referencia LIKE 'REF202400%'");
 
         // BA-126: DECIMAL(12,2) garantiza 2 decimales en BD; los valores ya vienen con 2 dec.
         const transfers = [
