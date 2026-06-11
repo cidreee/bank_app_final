@@ -32,25 +32,22 @@ async function getResumen(req, res) {
             return res.status(404).json({ error: 'Cuenta no encontrada' });
         }
 
-        const hoy = new Date().toISOString().split('T')[0];
         const enviadoResult = await query(`
             SELECT ISNULL(SUM(monto), 0) AS total
             FROM Transferencias
             WHERE cuenta_origen = @cuenta AND estado = 'completada'
-              AND CAST(fecha_hora AS DATE) = @hoy
+              AND CAST(fecha_hora AS DATE) = CAST(GETDATE() AS DATE)
         `, [
-            { name: 'cuenta', type: sql.Char(16), value: cuenta.numero_cuenta },
-            { name: 'hoy',    type: sql.NVarChar, value: hoy }
+            { name: 'cuenta', type: sql.Char(16), value: cuenta.numero_cuenta }
         ]);
 
         const recibidoResult = await query(`
             SELECT ISNULL(SUM(monto), 0) AS total
             FROM Transferencias
             WHERE cuenta_destino = @cuenta AND estado = 'completada'
-              AND CAST(fecha_hora AS DATE) = @hoy
+              AND CAST(fecha_hora AS DATE) = CAST(GETDATE() AS DATE)
         `, [
-            { name: 'cuenta', type: sql.Char(16), value: cuenta.numero_cuenta },
-            { name: 'hoy',    type: sql.NVarChar, value: hoy }
+            { name: 'cuenta', type: sql.Char(16), value: cuenta.numero_cuenta }
         ]);
 
         const enviadoHoy = parseFloat(enviadoResult.recordset[0].total || 0);

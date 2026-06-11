@@ -77,15 +77,13 @@ async function realizarTransferencia(req, res) {
         }
 
         // BA-82: límite diario
-        const hoy = new Date().toISOString().split('T')[0];
         const totalDiaResult = await query(`
             SELECT ISNULL(SUM(monto), 0) AS total
             FROM Transferencias
             WHERE cuenta_origen = @origen AND estado = 'completada'
-              AND CAST(fecha_hora AS DATE) = @hoy
+              AND CAST(fecha_hora AS DATE) = CAST(GETDATE() AS DATE)
         `, [
-            { name: 'origen', type: sql.Char(16), value: cuentaOrigen.numero_cuenta },
-            { name: 'hoy',    type: sql.NVarChar,  value: hoy }
+            { name: 'origen', type: sql.Char(16), value: cuentaOrigen.numero_cuenta }
         ]);
 
         const totalDia = parseFloat(totalDiaResult.recordset[0].total);
