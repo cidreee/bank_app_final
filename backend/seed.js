@@ -42,6 +42,7 @@ const cuentas = [
     { email:'pedro@bbva.com',  numero:'9999000011112222', saldo:5000.00  },
     { email:'ana@bbva.com',    numero:'3333444455556666', saldo:4700.00  }
 ];
+const numerosCuentaSeed = cuentas.map(c => c.numero);
 
 // ──────────────────────────────────────────────────────────────────────────────
 async function seed() {
@@ -76,7 +77,7 @@ async function seed() {
             logger.info('Seed', `✓ Usuario: ${u.email} | pwd: ${u.password} | estado: ${u.estado}`);
         }
 
-        // Insertar / actualizar cuentas
+        // Insertar / actualizar cuentas usando numero_cuenta como llave real.
         for (const c of cuentas) {
             const uidRes = await query(
                 'SELECT id FROM Usuarios WHERE email = @email',
@@ -86,14 +87,25 @@ async function seed() {
             if (!userId) { logger.warn('Seed', `Usuario no encontrado: ${c.email}`); continue; }
 
             await query(`
-                IF NOT EXISTS (SELECT 1 FROM Cuentas WHERE usuario_id = @uid)
+                DELETE FROM Cuentas
+                WHERE usuario_id = @uid
+                  AND numero_cuenta NOT IN (${numerosCuentaSeed.map((_, i) => `@seed${i}`).join(', ')})
+            `, [
+                { name:'uid', type:sql.Int, value:userId },
+                ...numerosCuentaSeed.map((numero, i) => ({ name:`seed${i}`, type:sql.Char, value:numero }))
+            ]);
+
+            await query(`
+                IF NOT EXISTS (SELECT 1 FROM Cuentas WHERE numero_cuenta = @num)
                 BEGIN
                     INSERT INTO Cuentas (numero_cuenta, usuario_id, saldo)
                     VALUES (@num, @uid, @saldo)
                 END
                 ELSE
                 BEGIN
-                    UPDATE Cuentas SET numero_cuenta = @num, saldo = @saldo WHERE usuario_id = @uid
+                    UPDATE Cuentas
+                    SET usuario_id = @uid, saldo = @saldo, estado = 'activa'
+                    WHERE numero_cuenta = @num
                 END
             `, [
                 { name:'num',   type:sql.Char,    value:c.numero },
@@ -144,12 +156,12 @@ async function seed() {
         console.log('\n✅ Seed completado. Resumen de accesos para QA:');
         console.log('──────────────────────────────────────────────────');
         console.log('  admin@bbva.com   / Admin1!   (administrador)');
-        console.log('  carlos@bbva.com  / Carlos1!  (cliente $15,000)');
-        console.log('  maria@bbva.com   / Maria1!   (cliente $8,500)');
+        console.log('  carlos@bbva.com  / Carlos1!  (cliente $12,300)');
+        console.log('  maria@bbva.com   / Maria1!   (cliente $10,000)');
         console.log('  juan@bbva.com    / Juan1!    (cliente $499 — fondos insuficientes)');
         console.log('  luisa@bbva.com   / Luisa1!   (cliente $49,800 — cerca de límite)');
         console.log('  pedro@bbva.com   / Pedro1!   (BLOQUEADO — probar reactivación)');
-        console.log('  ana@bbva.com     / Ana1!     (cliente $3,500)');
+        console.log('  ana@bbva.com     / Ana1!     (cliente $4,700)');
         console.log('──────────────────────────────────────────────────');
 
         process.exit(0);
